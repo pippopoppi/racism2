@@ -27,6 +27,12 @@ motore da supercar sintetizzato in tempo reale e avversari IA.
 - **3 avversari IA** con nomi e abilità diverse, classifica live, minimappa, giri 1/3/5.
 - Cordoli, tribune, cartelloni, barriere di pneumatici, lampioni, fari di notte, particelle e
   segni di gomma persistenti.
+- **Velocità ×1 / ×2 / ×3** dal menu (default ×3): tutto scala in modo coerente, i punti in cui
+  rilasciare il gas restano gli stessi ma la gara dura un terzo.
+- **Editor di circuiti** come nella V1: trascina i punti della spline, tocca la pista per
+  aggiungerne uno, `✕ PUNTO` per toglierlo, scegli il tema, dai un nome e salva. I circuiti
+  troppo stretti o che si sovrappongono vengono segnalati in rosso prima del salvataggio.
+  I tuoi circuiti compaiono nel menu (con ✎ per modificarli) e si salvano sul dispositivo.
 - **Record per circuito** salvato sul dispositivo e pulsante *Condividi su 𝕏*.
 
 ## Come si gioca
@@ -40,7 +46,8 @@ motore da supercar sintetizzato in tempo reale e avversari IA.
 | Audio | 🔊 | M |
 
 **Tasti multiplayer:** P1 `↑` + `Invio`, P2 `W` + `Q`, P3 `I` + `U`, P4 `Num8` + `Num7` (gas, turbo).
-Nel menu `1P` sceglie quanti piloti (1–4), `3G` quanti giri e `IA / NO IA` se riempire le corsie libere.
+Nel menu `1P` sceglie quanti piloti (1–4), `3G` quanti giri, `×3` la velocità e `IA / NO IA` se
+riempire le corsie libere. `✎ EDITOR` apre l'editor di circuiti.
 
 Al semaforo tieni premuto il GAS per partire forte. Più stelle ha il circuito, più veloci
 sono gli avversari.
