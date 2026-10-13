@@ -148,7 +148,7 @@ const TRACKS = [
 
 /* ---------------- physics ---------------- */
 const P = {
-  VMAX: 820, ACC: 760, BRAKE: 1250, COAST: 140, DRAG: 0.00008,
+  VMAX: 820, ACC: 760, BRAKE: 720, COAST: 720, DRAG: 0.00008,
   GRIP: 2400, SLIP_GAIN: 2.4, SLIP_RECOVER: 1.6, SCRUB: 0.12,
   TURBO_T: 1.6, TURBO_V: 1.22, TURBO_A: 1.9, TURBO_CHARGES: 3,
   DERAIL_T: 1.7, LOOK: 520
@@ -208,7 +208,7 @@ function stepCar(car, dt, race) {
     if (car.derail <= 0) { car.derail = 0; car.dx = car.dy = 0; car.spin = 0; race.events.push({ type: 'recover', car }); }
     return;
   }
-  if (car.finished) { car.throttle = 0; car.brake = car.v > 120 ? 1 : 0; }
+  if (car.finished) { car.throttle = 0; car.brake = 0; }
   const turbo = car.turboT > 0;
   if (turbo) car.turboT -= dt;
   const vmax = P.VMAX * (turbo ? P.TURBO_V : 1);
@@ -277,10 +277,10 @@ function aiControl(car, dt, race) {
     skill += clamp(-gap * 0.45, -0.05, 0.05);
   }
   const sk = clamp(skill, 0.8, 1.03);
-  const grip = race.grip * (1.18 + (race.track.def.stars - 1) * 0.03) * sk * sk;
+  const grip = race.grip * (1.10 + (race.track.def.stars - 1) * 0.03) * sk * sk;
   const tgt = targetSpeed(car.lane, car.s, grip, P.LOOK, 0.86);
   car.throttle = car.v < tgt - 8 ? 1 : 0;
-  car.brake = car.v > tgt + 14 ? 1 : 0;
+  car.brake = 0;
   if (car.turbo > 0 && car.turboT <= 0 && car.v > P.VMAX * 0.75 && tgt > P.VMAX * 1.1 && Math.random() < dt * 0.6) useTurbo(car, race);
 }
 function useTurbo(car, race) {
@@ -291,7 +291,7 @@ function useTurbo(car, race) {
 }
 function progress(car) { return (car.lap - 1) + car.s / car.lane.len; }
 
-function newRace(trackDef, laps, nPlayers) {
+function newRace(trackDef, laps, nPlayers, withAI) {
   const track = buildTrack(trackDef);
   const theme = THEMES[trackDef.theme];
   const race = {
@@ -303,8 +303,10 @@ function newRace(trackDef, laps, nPlayers) {
   const skills = [0.985, 0.955, 0.93];
   const names = AI_NAMES.slice().sort(() => Math.random() - 0.5);
   let ai = 0;
+  const useAI = withAI !== false || humans === 1;
   for (const L of [0, 1, 2, 3]) {
     const pi = humanLanes.indexOf(L), isP = pi >= 0;
+    if (!isP && !useAI) continue;
     const car = makeCar({
       player: isP, pidx: pi, laneIdx: L, lane: track.lanes[L],
       name: isP ? (humans === 1 ? 'TU' : 'P' + (pi + 1)) : names[ai],
@@ -737,7 +739,7 @@ const Snd = {
 
 /* ---------------- game state ---------------- */
 const SAVE_KEY = 'racism2';
-let save = { best: {}, sound: true, laps: 3, sel: 0, wins: 0, cam: 'full', players: 1 };
+let save = { best: {}, sound: true, laps: 3, sel: 0, wins: 0, cam: 'full', players: 1, ai: true };
 const MAX_PLAYERS = 4;
 try { const s = root.localStorage && root.localStorage.getItem(SAVE_KEY); if (s) save = Object.assign(save, JSON.parse(s)); } catch (e) {}
 function persist() { try { root.localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
@@ -751,7 +753,7 @@ const ROW_H = 150, TOP_H = 58;
 function twoP() { return G.race && G.race.players.length > 1; }
 function startRace(trackIdx) {
   const def = TRACKS[trackIdx];
-  const race = newRace(def, save.laps, save.players);
+  const race = newRace(def, save.laps, save.players, save.ai);
   G.race = race; G.state = 'race'; G.msgs.length = 0; particles.length = 0; G.result = null; G.lastLights = -1;
   G.world = buildWorld(race.track, race.theme, def.seed);
   G.mini = thumbCanvas(race.track, race.theme, 96, 96, 10);
@@ -896,9 +898,8 @@ function drawWorld(g) {
 }
 function btnRects() {
   return {
-    brake: { x: 14, y: H - 160, w: 124, h: 130 },
     gas: { x: W - 138, y: H - 160, w: 124, h: 130 },
-    turbo: { x: W - 138, y: H - 222, w: 124, h: 52 },
+    turbo: { x: 14, y: H - 160, w: 124, h: 130 },
     mute: { x: 58, y: H - 222, w: 40, h: 40 },
     cam: { x: 102, y: H - 222, w: 40, h: 40 },
     back: { x: 14, y: H - 222, w: 40, h: 40 }
@@ -921,15 +922,14 @@ function drawPedal(g, r, color, label, pressed, sub) {
   g.restore();
 }
 const PKEYS = [
-  { gas: ['ArrowUp', 'Space'], brake: ['ArrowDown', 'ShiftRight'], turbo: ['Enter', 'ControlRight'], label: '↑ ↓ Invio' },
-  { gas: ['KeyW'], brake: ['KeyS'], turbo: ['KeyQ'], label: 'W S Q' },
-  { gas: ['KeyI'], brake: ['KeyK'], turbo: ['KeyU'], label: 'I K U' },
-  { gas: ['Numpad8'], brake: ['Numpad5'], turbo: ['Numpad7'], label: 'Num 8 5 7' }
+  { gas: ['ArrowUp', 'Space', 'ArrowRight'], brake: [], turbo: ['Enter', 'ControlRight', 'ShiftRight'], label: '↑ + Invio' },
+  { gas: ['KeyW'], brake: [], turbo: ['KeyQ'], label: 'W + Q' },
+  { gas: ['KeyI'], brake: [], turbo: ['KeyU'], label: 'I + U' },
+  { gas: ['Numpad8'], brake: [], turbo: ['Numpad7'], label: 'Num8 + Num7' }
 ];
 function colRects(n) { // column-local rects for one player's control block, column width cw
   const cw = W / n, m = n > 2 ? 3 : 6;
-  const bw = Math.round(cw * 0.36) - m, gx = Math.round(cw * 0.40);
-  return { cw, gas: { x: gx, y: 12, w: cw - gx - m, h: ROW_H - 24 }, brake: { x: m, y: 12, w: bw, h: 78 }, turbo: { x: m, y: 96, w: bw, h: ROW_H - 108 } };
+  return { cw, gas: { x: m, y: 10, w: cw - 2 * m, h: 92 }, turbo: { x: m, y: 108, w: cw - 2 * m, h: ROW_H - 116 } };
 }
 function colLocal(x, y, n) { if (y < H - ROW_H) return null; const cw = W / n, i = Math.min(n - 1, Math.floor(x / cw)); return { pidx: i, lx: x - i * cw, ly: y - (H - ROW_H) }; }
 function drawCols(g, race) {
@@ -940,10 +940,9 @@ function drawCols(g, race) {
     g.save(); g.translate(i * C.cw, H - ROW_H);
     g.fillStyle = h.color; g.globalAlpha = 0.18; g.fillRect(0, 0, C.cw, ROW_H); g.globalAlpha = 1; g.fillRect(0, 0, C.cw, 4);
     if (h.derail === 0 && h.slip > 0.05 && race.state === 'race') { g.fillStyle = `rgba(255,0,0,${0.4 * clamp(h.slip, 0, 1)})`; g.fillRect(0, 0, C.cw, ROW_H); }
-    drawPedal(g, C.brake, '#d8312f', n > 2 ? '■' : 'FRENO', inp.brake);
     drawPedal(g, C.gas, '#2fa84f', 'GAS', inp.gas);
     const tb = h.turbo > 0 && h.turboT <= 0;
-    drawPedal(g, C.turbo, tb ? '#ff8a00' : '#6b5a4a', '⚡'.repeat(h.turbo) || (n > 2 ? '-' : 'TURBO'), h.turboT > 0);
+    drawPedal(g, C.turbo, tb ? '#ff8a00' : '#6b5a4a', '⚡'.repeat(h.turbo) || 'TURBO', h.turboT > 0);
     g.restore();
   });
   if (n > 2) { g.font = 'bold 9px Arial'; g.fillStyle = 'rgba(255,255,255,0.6)'; g.textAlign = 'center'; } 
@@ -1037,7 +1036,6 @@ function drawHUD(g) {
   g.fillStyle = 'rgba(255,255,255,0.15)'; roundRect(g, cx - 40, cy + 44, 80, 6, 3); g.fill();
   g.fillStyle = pl.rpm > 0.95 ? '#ff5050' : '#5dff7a'; roundRect(g, cx - 40, cy + 44, 80 * clamp(pl.rpm, 0, 1), 6, 3); g.fill();
   // pedals
-  drawPedal(g, R.brake, '#d8312f', 'FRENO', G.input.brake);
   drawPedal(g, R.gas, '#2fa84f', 'GAS', G.input.gas);
   const tb = pl.turbo > 0 && pl.turboT <= 0;
   drawPedal(g, R.turbo, tb ? '#ff8a00' : '#6b5a4a', 'TURBO', pl.turboT > 0, '⚡'.repeat(pl.turbo) || 'vuoto');
@@ -1057,7 +1055,7 @@ function drawHUD(g) {
       g.fillStyle = i < lit ? '#ff2020' : '#3a1010'; g.beginPath(); g.arc(W / 2 - 88 + i * 44, 178, 16, 0, TAU); g.fill();
       if (i < lit) { g.fillStyle = 'rgba(255,60,60,0.35)'; g.beginPath(); g.arc(W / 2 - 88 + i * 44, 178, 24, 0, TAU); g.fill(); }
     }
-    if (race.countdown > 3.6) { g.fillStyle = '#fff'; g.font = 'bold 14px Arial'; g.textAlign = 'center'; g.fillText('Tieni GAS per partire forte', W / 2, 228); }
+    if (race.countdown > 3.6) { g.fillStyle = '#fff'; g.font = 'bold 14px Arial'; g.textAlign = 'center'; g.fillText('Tieni GAS. Rilascia prima delle curve!', W / 2, 228); }
   }
   // messages
   G.msgs.forEach((m, i) => {
@@ -1070,7 +1068,7 @@ function drawHUD(g) {
 }
 function menuRects() {
   const cards = TRACKS.map((t, i) => ({ x: 14, y: 140 + i * 92, w: W - 28, h: 84, i }));
-  return { cards, go: { x: 104, y: H - 94, w: W - 208, h: 60 }, laps: { x: 14, y: H - 86, w: 40, h: 44 }, players: { x: 58, y: H - 86, w: 40, h: 44 }, mute: { x: W - 54, y: H - 86, w: 40, h: 44 } };
+  return { cards, go: { x: 104, y: H - 94, w: W - 208, h: 60 }, laps: { x: 14, y: H - 86, w: 40, h: 44 }, players: { x: 58, y: H - 86, w: 40, h: 44 }, ai: { x: W - 98, y: H - 86, w: 40, h: 44 }, mute: { x: W - 54, y: H - 86, w: 40, h: 44 } };
 }
 function drawMenu(g) {
   const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#13162a'); bg.addColorStop(1, '#2a0f1f');
@@ -1111,7 +1109,13 @@ function drawMenu(g) {
   g.font = '900 15px Arial Black, Arial'; g.fillStyle = save.players > 1 ? '#4fb3ff' : '#fff'; g.fillText(save.players + 'P', M.players.x + 20, M.players.y + 18);
   g.font = '9px Arial'; g.fillStyle = '#fff'; g.fillText(save.players > 1 ? 'piloti' : 'solo', M.players.x + 20, M.players.y + 34);
   g.font = '18px Arial'; g.fillText(Snd.on ? '🔊' : '🔇', M.mute.x + 20, M.mute.y + 22);
-  g.fillStyle = 'rgba(255,255,255,0.45)'; g.font = '11px Arial'; g.fillText(save.players > 1 ? 'Stesso schermo: un blocco GAS/FRENO per pilota • tasti ' + PKEYS.slice(0, save.players).map(k => k.label).join(' | ') : 'GAS a destra • FRENO a sinistra • TURBO ⚡ • 🗺️/🎥 telecamera', W / 2, H - 14);
+  if (save.players > 1) {
+    g.fillStyle = 'rgba(255,255,255,0.12)'; roundRect(g, M.ai.x, M.ai.y, M.ai.w, M.ai.h, 10); g.fill();
+    if (!save.ai) { g.strokeStyle = '#4fb3ff'; g.lineWidth = 2; g.stroke(); }
+    g.font = '900 13px Arial Black, Arial'; g.fillStyle = save.ai ? '#fff' : '#4fb3ff'; g.fillText(save.ai ? 'IA' : 'NO IA', M.ai.x + 20, M.ai.y + 18);
+    g.font = '9px Arial'; g.fillStyle = '#fff'; g.fillText(save.ai ? 'riempi' : 'solo noi', M.ai.x + 20, M.ai.y + 34);
+  }
+  g.fillStyle = 'rgba(255,255,255,0.45)'; g.font = '11px Arial'; g.fillText(save.players > 1 ? 'Stesso schermo, un GAS per pilota • tasti ' + PKEYS.slice(0, save.players).map(k => k.label).join(' | ') : 'Tieni GAS, rilascia in curva • TURBO ⚡ • 🗺️/🎥 telecamera', W / 2, H - 14);
 }
 function wrapText(g, text, x, y, maxW, lh) {
   const words = text.split(' '); let line = '';
@@ -1127,7 +1131,7 @@ function drawResult(g) {
   if (r.winner) {
     g.font = '900 48px Arial Black, Arial'; g.fillStyle = 'rgba(0,0,0,0.6)'; g.fillText('VINCE ' + r.winner.name, W / 2 + 3, 158);
     g.fillStyle = r.winner.color; g.fillText('VINCE ' + r.winner.name, W / 2, 155);
-    g.font = 'bold 18px Arial'; g.fillStyle = '#fff'; g.fillText(r.winner.pos === 1 ? 'e batte anche le IA! 🏆' : 'arrivato ' + r.winner.pos + '° assoluto', W / 2, 205);
+    g.font = 'bold 18px Arial'; g.fillStyle = '#fff'; g.fillText(race.cars.length === race.players.length ? 'sfida tra amici 🏆' : r.winner.pos === 1 ? 'e batte anche le IA! 🏆' : 'arrivato ' + r.winner.pos + '° assoluto', W / 2, 205);
   } else {
     g.font = '900 64px Arial Black, Arial'; g.fillStyle = 'rgba(0,0,0,0.6)'; g.fillText('P' + r.pos, W / 2 + 3, 158);
     g.fillStyle = r.pos === 1 ? '#ffd600' : r.pos === 2 ? '#e0e0e0' : r.pos === 3 ? '#d08a4a' : '#fff'; g.fillText('P' + r.pos, W / 2, 155);
@@ -1184,6 +1188,7 @@ function pressAt(x, y, id) {
     if (inRect(x, y, M.go)) { Snd.click(); startRace(save.sel); return; }
     if (inRect(x, y, M.laps)) { save.laps = save.laps >= 5 ? 1 : save.laps + 2; persist(); Snd.click(); return; }
     if (inRect(x, y, M.players)) { save.players = save.players % MAX_PLAYERS + 1; persist(); Snd.click(); return; }
+    if (save.players > 1 && inRect(x, y, M.ai)) { save.ai = !save.ai; persist(); Snd.click(); return; }
     if (inRect(x, y, M.mute)) { Snd.setOn(!Snd.on); save.sound = Snd.on; persist(); return; }
     return;
   }
@@ -1205,16 +1210,14 @@ function pressAt(x, y, id) {
     const n = G.race.players.length, L = colLocal(x, y, n); if (!L) return;
     const C = colRects(n), car = G.race.players[L.pidx], inp = G.inputs[L.pidx];
     if (inRect(L.lx, L.ly, C.turbo)) { if (useTurbo(car, G.race)) handleEvents(G.race); return; }
-    const b = L.lx < C.gas.x ? 'brake' : 'gas';
-    inp[b] = true; pointers.set(id, { p: L.pidx, b }); return;
+    inp.gas = true; pointers.set(id, { p: L.pidx, b: 'gas' }); return;
   }
   const R = btnRects();
   if (inRect(x, y, R.mute)) { Snd.setOn(!Snd.on); save.sound = Snd.on; persist(); return; }
   if (inRect(x, y, R.back)) { pauseGame(); return; }
   if (inRect(x, y, R.cam)) { save.cam = save.cam === 'full' ? 'chase' : 'full'; persist(); Snd.click(); return; }
   if (inRect(x, y, R.turbo)) { if (useTurbo(G.race.player, G.race)) handleEvents(G.race); return; }
-  const b = x < W / 2 ? 'brake' : 'gas';
-  G.input[b] = true; pointers.set(id, { p: 0, b });
+  G.input.gas = true; pointers.set(id, { p: 0, b: 'gas' });
 }
 function pauseGame() { G.state = 'paused'; clearInputs(); }
 function clearInputs() { for (const i of G.inputs) i.gas = i.brake = false; pointers.clear(); for (const s of keys) { s.gas.clear(); s.brake.clear(); } }

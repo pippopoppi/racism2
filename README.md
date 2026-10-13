@@ -11,7 +11,8 @@ motore da supercar sintetizzato in tempo reale e avversari IA.
 - **Niente più deragliamenti ingiusti.** La macchina non vola via appena superi il limite:
   prima scivola (fumo, stridio, striscia sull'asfalto), lo schermo si tinge di rosso e compare
   l'avviso *TROPPO VELOCE!*. Deragli solo se insisti o entri in curva molto troppo forte.
-- **Pedale del freno** (sinistra) oltre al gas (destra), più **TURBO ⚡** con 3 cariche a gara.
+- **Un solo comando, come un vero slot car:** tieni il GAS, rilascia prima delle curve e
+  l'auto rallenta da sola. In più **TURBO ⚡** con 3 cariche a gara.
 - **Linea di gara sul tracciato:** davanti alla macchina la corsia si colora di giallo
   ("dovrai frenare") o rosso ("frena ADESSO").
 - **Motore da supercar** via Web Audio: 6 marce con cambiata, scarico, fischio del turbo,
@@ -21,8 +22,8 @@ motore da supercar sintetizzato in tempo reale e avversari IA.
 - **Tutto il circuito sempre in vista** (come in un vero slot car) con la tua auto evidenziata,
   così sai in anticipo quando accelerare. Con 🗺️/🎥 si passa alla telecamera che insegue l'auto.
 - **Multiplayer locale da 2 a 4 piloti** sullo stesso schermo, in stile V1: ogni pilota ha il suo
-  blocco GAS / FRENO / TURBO colorato in basso e la sua riga di stato in alto. Le corsie libere
-  le prendono le IA. Niente server.
+  blocco GAS / TURBO colorato in basso e la sua riga di stato in alto. Con `IA` le corsie libere
+  le prendono le IA, con `NO IA` in pista ci siete solo voi. Niente server.
 - **3 avversari IA** con nomi e abilità diverse, classifica live, minimappa, giri 1/3/5.
 - Cordoli, tribune, cartelloni, barriere di pneumatici, lampioni, fari di notte, particelle e
   segni di gomma persistenti.
@@ -32,15 +33,14 @@ motore da supercar sintetizzato in tempo reale e avversari IA.
 
 | Azione | Touch | Tastiera |
 | --- | --- | --- |
-| Gas | pedale destro (o metà destra in basso) | ↑ / W / Spazio |
-| Freno | pedale sinistro (o metà sinistra in basso) | ↓ / S / Shift |
-| Turbo | pulsante TURBO | Enter / T / Ctrl |
+| Gas | pedale GAS (o un dito ovunque sullo schermo) | ↑ / W / Spazio |
+| Turbo | pulsante TURBO | Enter / Q / Shift |
 | Pausa | ⏸ in alto a sinistra | Esc |
 | Telecamera | 🗺️ / 🎥 | C |
 | Audio | 🔊 | M |
 
-**Tasti multiplayer:** P1 `↑ ↓ Invio`, P2 `W S Q`, P3 `I K U`, P4 `Num 8 5 7` (gas, freno, turbo).
-Nel menu il pulsante `1P` sceglie quanti piloti (1–4) e `3G` quanti giri.
+**Tasti multiplayer:** P1 `↑` + `Invio`, P2 `W` + `Q`, P3 `I` + `U`, P4 `Num8` + `Num7` (gas, turbo).
+Nel menu `1P` sceglie quanti piloti (1–4), `3G` quanti giri e `IA / NO IA` se riempire le corsie libere.
 
 Al semaforo tieni premuto il GAS per partire forte. Più stelle ha il circuito, più veloci
 sono gli avversari.
