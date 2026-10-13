@@ -18,9 +18,14 @@ motore da supercar sintetizzato in tempo reale e avversari IA.
   stridio delle gomme, botto al deragliamento, semaforo F1 e fanfara d'arrivo.
 - **5 circuiti con ambienti diversi:** ovale nel deserto rosso, autodromo con tribune,
   riviera sul mare, cittadino di notte al neon, tornanti alpini sulla neve (grip ridotto).
+- **Tutto il circuito sempre in vista** (come in un vero slot car) con la tua auto evidenziata,
+  così sai in anticipo quando accelerare. Con 🗺️/🎥 si passa alla telecamera che insegue l'auto.
+- **Multiplayer locale da 2 a 4 piloti** sullo stesso schermo, in stile V1: ogni pilota ha il suo
+  blocco GAS / FRENO / TURBO colorato in basso e la sua riga di stato in alto. Le corsie libere
+  le prendono le IA. Niente server.
 - **3 avversari IA** con nomi e abilità diverse, classifica live, minimappa, giri 1/3/5.
-- **Telecamera dinamica** che ruota e zooma con la velocità, cordoli, tribune, cartelloni,
-  barriere di pneumatici, lampioni, fari di notte, particelle e segni di gomma persistenti.
+- Cordoli, tribune, cartelloni, barriere di pneumatici, lampioni, fari di notte, particelle e
+  segni di gomma persistenti.
 - **Record per circuito** salvato sul dispositivo e pulsante *Condividi su 𝕏*.
 
 ## Come si gioca
@@ -31,7 +36,11 @@ motore da supercar sintetizzato in tempo reale e avversari IA.
 | Freno | pedale sinistro (o metà sinistra in basso) | ↓ / S / Shift |
 | Turbo | pulsante TURBO | Enter / T / Ctrl |
 | Pausa | ⏸ in alto a sinistra | Esc |
+| Telecamera | 🗺️ / 🎥 | C |
 | Audio | 🔊 | M |
+
+**Tasti multiplayer:** P1 `↑ ↓ Invio`, P2 `W S Q`, P3 `I K U`, P4 `Num 8 5 7` (gas, freno, turbo).
+Nel menu il pulsante `1P` sceglie quanti piloti (1–4) e `3G` quanti giri.
 
 Al semaforo tieni premuto il GAS per partire forte. Più stelle ha il circuito, più veloci
 sono gli avversari.
