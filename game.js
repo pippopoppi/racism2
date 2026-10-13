@@ -149,7 +149,7 @@ const TRACKS = [
 /* ---------------- physics ---------------- */
 const BASE = {
   VMAX: 820, ACC: 760, BRAKE: 720, COAST: 720, DRAG: 0.00008,
-  GRIP: 2400, SLIP_GAIN: 2.4, SLIP_RECOVER: 1.6, SCRUB: 0.12,
+  GRIP: 2100, SLIP_GAIN: 5, SLIP_CURVE: 4, SLIP_RECOVER: 1.0, SCRUB: 0.03,
   TURBO_T: 1.6, TURBO_V: 1.22, TURBO_A: 1.9, TURBO_CHARGES: 3,
   DERAIL_T: 1.7, LOOK: 520, K: 1
 };
@@ -158,6 +158,7 @@ const P = Object.assign({}, BASE);
 // need the same lift points but everything happens K times faster (lap times divide by K).
 function applySpeed(K) {
   K = clamp(K || 1, 1, 4);
+  Object.assign(P, BASE);
   P.K = K; P.VMAX = BASE.VMAX * K; P.ACC = BASE.ACC * K * K; P.BRAKE = BASE.BRAKE * K * K; P.COAST = BASE.COAST * K * K;
   P.GRIP = BASE.GRIP * K * K; P.SLIP_GAIN = BASE.SLIP_GAIN * K; P.SLIP_RECOVER = BASE.SLIP_RECOVER * K;
   P.TURBO_T = BASE.TURBO_T / K; P.DERAIL_T = BASE.DERAIL_T / Math.sqrt(K);
@@ -232,7 +233,7 @@ function stepCar(car, dt, race) {
   const excess = lat / race.grip - 1;
   car.excess = excess;
   if (excess > 0) {
-    car.slip = Math.min(1.3, car.slip + excess * (1 + excess) * P.SLIP_GAIN * dt);
+    car.slip = Math.min(1.3, car.slip + excess * (1 + P.SLIP_CURVE * excess) * P.SLIP_GAIN * dt);
     car.v = Math.max(0, car.v - excess * race.grip * P.SCRUB * dt);
   } else car.slip = Math.max(0, car.slip - P.SLIP_RECOVER * dt);
   if (car.slip >= 1) { derailCar(car, race); return; }
