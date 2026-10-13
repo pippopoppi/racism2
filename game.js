@@ -373,20 +373,23 @@ function runs(track, pred, pad) { // contiguous index ranges where pred(i) holds
 const SHOULDER = { verde: 'rgba(205,195,160,0.6)', costa: 'rgba(255,255,255,0.35)', notte: 'rgba(90,95,130,0.5)', neve: 'rgba(255,255,255,0.7)', rosso: 'rgba(60,30,20,0.45)' };
 const BOARDS = ['PIPPO POPPI GAMES', 'COCCODRILLO vs PICCIONE', 'STEEL COMMAND', 'VOID VANGUARD', 'CROWD CANNON', 'GRU GRU ENERGY'];
 
-function buildWorld(track, theme, seed) {
+function buildWorld(track, theme, seed, z, dpr) {
+  // z = screen zoom the world will be shown at (world px -> CSS px); the canvas is built at exactly z*dpr so nothing gets resampled.
+  z = z || 1; dpr = dpr || 1;
+  const S = z * dpr, cs = 1 / z, low = z < 0.5; // cs: world units per CSS pixel
   const B = track.bounds, c = track.center, n = c.n;
   const cv = document.createElement('canvas');
-  cv.width = Math.ceil(B.w); cv.height = Math.ceil(B.h);
+  cv.width = Math.ceil(B.w * S); cv.height = Math.ceil(B.h * S);
   const g = cv.getContext('2d');
-  g.translate(-B.x, -B.y);
+  g.scale(S, S); g.translate(-B.x, -B.y);
   const R = rng(seed);
   g.fillStyle = theme.ground; g.fillRect(B.x, B.y, B.w, B.h);
   g.fillStyle = theme.ground2;
-  for (let i = 0; i < 1100; i++) {
-    const x = B.x + R() * B.w, y = B.y + R() * B.h, r = 8 + R() * 44;
+  const nb = low ? 260 : 1100, bs = low ? 2.2 : 1;
+  for (let i = 0; i < nb; i++) {
+    const x = B.x + R() * B.w, y = B.y + R() * B.h, r = (8 + R() * 44) * bs;
     g.beginPath(); g.ellipse(x, y, r, r * 0.55, R() * 3, 0, TAU); g.fill();
   }
-  // centroid (to know which side is "outside")
   let cx = 0, cy = 0; for (let i = 0; i < n; i++) { cx += c.x[i]; cy += c.y[i]; } cx /= n; cy /= n;
   const outerSign = i => { const dx = cx - c.x[i], dy = cy - c.y[i]; return (dx * track.nx[i] + dy * track.ny[i]) > 0 ? -1 : 1; };
 
@@ -395,50 +398,52 @@ function buildWorld(track, theme, seed) {
     const gr = g.createLinearGradient(0, top, 0, B.y + B.h);
     gr.addColorStop(0, '#5fc3e8'); gr.addColorStop(1, '#1f6fb5');
     g.fillStyle = gr; g.fillRect(B.x, top, B.w, 230);
-    g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = 2;
-    for (let k = 0; k < 40; k++) { const y = top + 20 + R() * 190, x = B.x + R() * B.w; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + 20, y - 6, x + 44, y); g.stroke(); }
+    g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = 2 * Math.max(1, cs * 0.6);
+    for (let k = 0; k < 40; k++) { const y = top + 20 + R() * 190, x = B.x + R() * B.w; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + 20 * bs, y - 6 * bs, x + 44 * bs, y); g.stroke(); }
     g.fillStyle = '#f7e7b5'; g.fillRect(B.x, top - 26, B.w, 26);
   }
-  // decorations
   const free = (x, y, d) => track.distToTrack(x, y) > TRACK_HALF + d && (!theme.sea || y < B.y + B.h - 260);
+  const ds = low ? 2.4 : 1; // decoration size factor
   if (theme.decor === 'city') {
     for (let i = 0; i < 260; i++) {
       const x = B.x + R() * B.w, y = B.y + R() * B.h, w = 60 + R() * 110, h = 60 + R() * 110;
       if (!free(x, y, 70) || !free(x + w, y + h, 70) || !free(x + w, y, 70) || !free(x, y + h, 70)) continue;
       g.fillStyle = ['#22243a', '#2b2e4a', '#1c1e30'][Math.floor(R() * 3)]; g.fillRect(x, y, w, h);
       g.fillStyle = '#34375a'; g.fillRect(x + 4, y + 4, w - 8, h - 8);
-      for (let wx = x + 10; wx < x + w - 8; wx += 12) for (let wy = y + 10; wy < y + h - 8; wy += 12) {
-        if (R() < 0.55) { g.fillStyle = R() < 0.3 ? '#ffd27a' : '#8be9ff'; g.fillRect(wx, wy, 5, 6); }
+      const step = low ? 22 : 12, ws = low ? 9 : 5;
+      for (let wx = x + 10; wx < x + w - 8; wx += step) for (let wy = y + 10; wy < y + h - 8; wy += step) {
+        if (R() < 0.55) { g.fillStyle = R() < 0.3 ? '#ffd27a' : '#8be9ff'; g.fillRect(wx, wy, ws, ws * 1.2); }
       }
     }
   } else {
-    for (let i = 0; i < 720; i++) {
+    const nd = low ? 170 : 720;
+    for (let i = 0; i < nd; i++) {
       const x = B.x + R() * B.w, y = B.y + R() * B.h;
-      if (!free(x, y, 58)) continue;
+      if (!free(x, y, 58 * (low ? 1.3 : 1))) continue;
       if (theme.decor === 'trees') {
-        const r = 14 + R() * 18;
-        g.fillStyle = 'rgba(0,0,0,0.18)'; g.beginPath(); g.arc(x + 6, y + 7, r, 0, TAU); g.fill();
+        const r = (14 + R() * 18) * ds;
+        g.fillStyle = 'rgba(0,0,0,0.18)'; g.beginPath(); g.arc(x + 6 * ds, y + 7 * ds, r, 0, TAU); g.fill();
         g.fillStyle = ['#2f7a2a', '#3c8f33', '#2a6f27', '#4a9a3a'][Math.floor(R() * 4)]; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
         g.fillStyle = 'rgba(255,255,255,0.12)'; g.beginPath(); g.arc(x - r * 0.3, y - r * 0.3, r * 0.5, 0, TAU); g.fill();
       } else if (theme.decor === 'palms') {
-        if (R() < 0.35) { // umbrella
-          g.fillStyle = ['#ff5e5e', '#ffd84d', '#4dc3ff', '#ffffff'][Math.floor(R() * 4)]; g.beginPath(); g.arc(x, y, 11, 0, TAU); g.fill();
-          g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 2; g.beginPath(); g.moveTo(x - 11, y); g.lineTo(x + 11, y); g.moveTo(x, y - 11); g.lineTo(x, y + 11); g.stroke();
+        if (R() < 0.35) {
+          g.fillStyle = ['#ff5e5e', '#ffd84d', '#4dc3ff', '#ffffff'][Math.floor(R() * 4)]; g.beginPath(); g.arc(x, y, 11 * ds, 0, TAU); g.fill();
+          g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 2 * ds; g.beginPath(); g.moveTo(x - 11 * ds, y); g.lineTo(x + 11 * ds, y); g.moveTo(x, y - 11 * ds); g.lineTo(x, y + 11 * ds); g.stroke();
         } else {
-          g.fillStyle = 'rgba(0,0,0,0.18)'; g.beginPath(); g.arc(x + 8, y + 8, 16, 0, TAU); g.fill();
-          g.strokeStyle = '#2f8a3a'; g.lineWidth = 5; g.lineCap = 'round';
-          for (let k = 0; k < 7; k++) { const a = k / 7 * TAU + R(); g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + Math.cos(a) * 14, y + Math.sin(a) * 14 - 6, x + Math.cos(a) * 24, y + Math.sin(a) * 24); g.stroke(); }
-          g.fillStyle = '#8b5a2b'; g.beginPath(); g.arc(x, y, 4, 0, TAU); g.fill();
+          g.fillStyle = 'rgba(0,0,0,0.18)'; g.beginPath(); g.arc(x + 8 * ds, y + 8 * ds, 16 * ds, 0, TAU); g.fill();
+          g.strokeStyle = '#2f8a3a'; g.lineWidth = 5 * ds; g.lineCap = 'round';
+          for (let k = 0; k < 7; k++) { const a = k / 7 * TAU + R(); g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + Math.cos(a) * 14 * ds, y + Math.sin(a) * 14 * ds - 6 * ds, x + Math.cos(a) * 24 * ds, y + Math.sin(a) * 24 * ds); g.stroke(); }
+          g.fillStyle = '#8b5a2b'; g.beginPath(); g.arc(x, y, 4 * ds, 0, TAU); g.fill();
         }
       } else if (theme.decor === 'pines') {
-        const r = 12 + R() * 14;
-        g.fillStyle = 'rgba(0,0,0,0.15)'; g.beginPath(); g.arc(x + 5, y + 6, r, 0, TAU); g.fill();
+        const r = (12 + R() * 14) * ds;
+        g.fillStyle = 'rgba(0,0,0,0.15)'; g.beginPath(); g.arc(x + 5 * ds, y + 6 * ds, r, 0, TAU); g.fill();
         g.fillStyle = ['#1d4d2b', '#265f33', '#17402a'][Math.floor(R() * 3)];
         g.beginPath(); for (let k = 0; k < 8; k++) { const a = k / 8 * TAU, rr = k % 2 ? r : r * 0.55; g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } g.closePath(); g.fill();
         g.fillStyle = 'rgba(255,255,255,0.7)'; g.beginPath(); g.arc(x, y, r * 0.3, 0, TAU); g.fill();
       } else if (theme.decor === 'rocks') {
-        const r = 8 + R() * 22;
-        g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.ellipse(x + 5, y + 6, r, r * 0.6, 0, 0, TAU); g.fill();
+        const r = (8 + R() * 22) * ds;
+        g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.ellipse(x + 5 * ds, y + 6 * ds, r, r * 0.6, 0, 0, TAU); g.fill();
         g.fillStyle = ['#8e3f22', '#a24a28', '#6f2f1a'][Math.floor(R() * 3)];
         g.beginPath(); for (let k = 0; k < 7; k++) { const a = k / 7 * TAU, rr = r * (0.75 + R() * 0.3); g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.65); } g.closePath(); g.fill();
         g.fillStyle = 'rgba(255,200,150,0.25)'; g.beginPath(); g.ellipse(x - r * 0.2, y - r * 0.2, r * 0.4, r * 0.25, 0, 0, TAU); g.fill();
@@ -446,50 +451,56 @@ function buildWorld(track, theme, seed) {
     }
   }
 
-  // track surface on a temp layer
+  // track surface
   const tc = document.createElement('canvas'); tc.width = cv.width; tc.height = cv.height;
-  const t = tc.getContext('2d'); t.translate(-B.x, -B.y);
+  const t = tc.getContext('2d'); t.scale(S, S); t.translate(-B.x, -B.y);
   t.lineCap = 'round'; t.lineJoin = 'round';
   tracePoly(t, c.x, c.y, n, 0, n); t.closePath();
-  t.strokeStyle = SHOULDER[track.def.theme] || 'rgba(0,0,0,0.2)'; t.lineWidth = TRACK_HALF * 2 + 40; t.stroke();
+  t.strokeStyle = SHOULDER[track.def.theme] || 'rgba(0,0,0,0.2)'; t.lineWidth = TRACK_HALF * 2 + Math.max(40, 10 * cs); t.stroke();
   t.strokeStyle = theme.asphalt; t.lineWidth = TRACK_HALF * 2; t.stroke();
-  t.fillStyle = theme.asphalt2;
-  for (let i = 0; i < n; i += 2) { const o = (R() * 2 - 1) * (TRACK_HALF - 6); t.fillRect(c.x[i] + track.nx[i] * o, c.y[i] + track.ny[i] * o, 2 + R() * 3, 1.5); }
-  t.fillStyle = 'rgba(0,0,0,0.25)';
-  for (let i = 0; i < n; i += 3) { const o = (R() * 2 - 1) * (TRACK_HALF - 6); t.fillRect(c.x[i] + track.nx[i] * o, c.y[i] + track.ny[i] * o, 1.5 + R() * 2, 1.5); }
+  if (!low) {
+    t.fillStyle = theme.asphalt2;
+    for (let i = 0; i < n; i += 2) { const o = (R() * 2 - 1) * (TRACK_HALF - 6); t.fillRect(c.x[i] + track.nx[i] * o, c.y[i] + track.ny[i] * o, 2 + R() * 3, 1.5); }
+    t.fillStyle = 'rgba(0,0,0,0.25)';
+    for (let i = 0; i < n; i += 3) { const o = (R() * 2 - 1) * (TRACK_HALF - 6); t.fillRect(c.x[i] + track.nx[i] * o, c.y[i] + track.ny[i] * o, 1.5 + R() * 2, 1.5); }
+  } else {
+    // subtle lighter centre so the asphalt is not flat
+    t.strokeStyle = theme.asphalt2; t.lineWidth = TRACK_HALF * 1.1; t.globalAlpha = 0.5; t.stroke(); t.globalAlpha = 1;
+  }
   // lane slots
   for (const lane of track.lanes) {
-    t.strokeStyle = 'rgba(255,255,255,0.10)'; t.lineWidth = 7; tracePoly(t, lane.x, lane.y, lane.n, 0, lane.n); t.closePath(); t.stroke();
-    t.strokeStyle = theme.slot; t.lineWidth = 3; tracePoly(t, lane.x, lane.y, lane.n, 0, lane.n); t.closePath(); t.stroke();
+    if (!low) { t.strokeStyle = 'rgba(255,255,255,0.10)'; t.lineWidth = 7; tracePoly(t, lane.x, lane.y, lane.n, 0, lane.n); t.closePath(); t.stroke(); }
+    t.strokeStyle = low ? 'rgba(0,0,0,0.55)' : theme.slot; t.lineWidth = low ? 1.1 * cs : 3; tracePoly(t, lane.x, lane.y, lane.n, 0, lane.n); t.closePath(); t.stroke();
   }
   // edge lines
-  if (theme.glow) { t.shadowColor = theme.edge; t.shadowBlur = 16; }
+  if (theme.glow) { t.shadowColor = theme.edge; t.shadowBlur = low ? 6 * cs : 16; }
+  const edgeW = low ? 1.6 * cs : 3;
   for (const side of [-1, 1]) {
-    const o = offsetPts(track, side * (TRACK_HALF - 2));
-    t.strokeStyle = theme.edge; t.lineWidth = 3; tracePoly(t, o.xs, o.ys, n, 0, n); t.closePath(); t.stroke();
+    const o = offsetPts(track, side * (TRACK_HALF - edgeW / 2));
+    t.strokeStyle = theme.edge; t.lineWidth = edgeW; tracePoly(t, o.xs, o.ys, n, 0, n); t.closePath(); t.stroke();
   }
   // kerbs at corners
-  const KERB_K = 1 / 300;
+  const KERB_K = 1 / 300, kerbW = low ? 4.5 * cs : 10, dash = low ? 8 * cs : 16;
   for (const side of [-1, 1]) {
-    const o = offsetPts(track, side * (TRACK_HALF - 5));
+    const o = offsetPts(track, side * (TRACK_HALF - kerbW / 2));
     for (const [a, b] of runs(track, i => Math.abs(c.k[i]) > KERB_K, 12)) {
-      t.setLineDash([]); t.strokeStyle = theme.kerb[0]; t.lineWidth = 10; tracePoly(t, o.xs, o.ys, n, a, b); t.stroke();
-      t.setLineDash([16, 16]); t.strokeStyle = theme.kerb[1]; tracePoly(t, o.xs, o.ys, n, a, b); t.stroke();
+      t.setLineDash([]); t.strokeStyle = theme.kerb[0]; t.lineWidth = kerbW; tracePoly(t, o.xs, o.ys, n, a, b); t.stroke();
+      t.setLineDash([dash, dash]); t.strokeStyle = theme.kerb[1]; tracePoly(t, o.xs, o.ys, n, a, b); t.stroke();
     }
   }
   t.setLineDash([]); t.shadowBlur = 0;
   // start / finish
   {
     const i = 0, hx = Math.cos(c.h[i]), hy = Math.sin(c.h[i]), nxv = track.nx[i], nyv = track.ny[i];
-    const sq = 8, cols = Math.floor((TRACK_HALF * 2 - 8) / sq);
-    for (let r = 0; r < 3; r++) for (let k = 0; k < cols; k++) {
+    const sq = low ? Math.max(8, 4 * cs) : 8, cols = Math.floor((TRACK_HALF * 2 - 8) / sq), rows = low ? 2 : 3;
+    for (let r = 0; r < rows; r++) for (let k = 0; k < cols; k++) {
       t.fillStyle = (r + k) % 2 ? '#111' : '#fff';
-      const off = -TRACK_HALF + 4 + k * sq, along = (r - 1) * sq;
+      const off = -TRACK_HALF + 4 + k * sq, along = (r - (rows - 1) / 2) * sq;
       const x = c.x[i] + nxv * off + hx * along, y = c.y[i] + nyv * off + hy * along;
-      t.save(); t.translate(x, y); t.rotate(c.h[i]); t.fillRect(-sq / 2, 0, sq, sq); t.restore();
+      t.save(); t.translate(x, y); t.rotate(c.h[i]); t.fillRect(-sq / 2, -sq / 2, sq, sq); t.restore();
     }
   }
-  g.drawImage(tc, B.x, B.y);
+  g.drawImage(tc, B.x, B.y, B.w, B.h);
 
   // straights: stands and boards
   const straights = runs(track, i => Math.abs(c.k[i]) < 1 / 1600, 0).filter(r => r[1] - r[0] > 60).sort((p, q) => (q[1] - q[0]) - (p[1] - p[0]));
@@ -503,31 +514,32 @@ function buildWorld(track, theme, seed) {
   if (straights[0]) placeAlong(straights[0], TRACK_HALF + 78, L => {
     g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(-L / 2 + 6, -30 + 8, L, 60);
     g.fillStyle = '#5a5f6b'; g.fillRect(-L / 2, -30, L, 60);
-    for (let row = 0; row < 4; row++) for (let x = -L / 2 + 8; x < L / 2 - 6; x += 9) {
+    const dot = low ? 6 : 3, stepx = low ? 16 : 9, rows = low ? 3 : 4;
+    for (let row = 0; row < rows; row++) for (let x = -L / 2 + 8; x < L / 2 - 6; x += stepx) {
       g.fillStyle = ['#ff5a5a', '#ffd34d', '#5ad1ff', '#ffffff', '#ff9bd3', '#8cff8c'][Math.floor(R() * 6)];
-      g.beginPath(); g.arc(x, -22 + row * 10 + (R() - 0.5) * 3, 3, 0, TAU); g.fill();
+      g.beginPath(); g.arc(x, -22 + row * (low ? 13 : 10) + (R() - 0.5) * 3, dot, 0, TAU); g.fill();
     }
     g.fillStyle = theme.night ? '#3a3f6b' : '#d8312f'; g.fillRect(-L / 2, 20, L, 12);
-    g.fillStyle = '#fff'; g.font = 'bold 11px Arial'; g.textAlign = 'center'; g.fillText('PIPPO POPPI GAMES', 0, 30);
+    if (!low) { g.fillStyle = '#fff'; g.font = 'bold 11px Arial'; g.textAlign = 'center'; g.fillText('PIPPO POPPI GAMES', 0, 30); }
   });
   if (straights[1]) placeAlong(straights[1], TRACK_HALF + 36, L => {
     let x = -L / 2, k = 0;
     while (x + 110 < L / 2) {
       g.fillStyle = ['#ffffff', '#ffd84d', '#4dc3ff', '#ff5e5e'][k % 4]; g.fillRect(x, -9, 108, 18);
-      g.fillStyle = '#111'; g.font = 'bold 9px Arial'; g.textAlign = 'center'; g.fillText(BOARDS[k % BOARDS.length], x + 54, 3.5);
+      if (!low) { g.fillStyle = '#111'; g.font = 'bold 9px Arial'; g.textAlign = 'center'; g.fillText(BOARDS[k % BOARDS.length], x + 54, 3.5); }
       x += 116; k++;
     }
   });
   // tyre walls at tight corners (outer side)
+  const tr = low ? 3.2 * cs : 7, tstep = low ? Math.max(5, Math.round(2 * tr / STEP)) : 5;
   for (const [a, b] of runs(track, i => Math.abs(c.k[i]) > 1 / 120, 10)) {
-    for (let i = a; i <= b; i += 5) {
-      const j = ((i % n) + n) % n, sgn = -(Math.sign(c.k[j]) || 1), o = TRACK_HALF + 30;
+    for (let i = a, k = 0; i <= b; i += tstep, k++) {
+      const j = ((i % n) + n) % n, sgn = -(Math.sign(c.k[j]) || 1), o = TRACK_HALF + 22 + tr;
       const x = c.x[j] + track.nx[j] * sgn * o, y = c.y[j] + track.ny[j] * sgn * o;
-      g.fillStyle = '#151515'; g.beginPath(); g.arc(x, y, 7, 0, TAU); g.fill();
-      g.fillStyle = (i / 5) % 2 ? '#e8e8e8' : '#d8312f'; g.beginPath(); g.arc(x, y, 3.5, 0, TAU); g.fill();
+      g.fillStyle = '#151515'; g.beginPath(); g.arc(x, y, tr, 0, TAU); g.fill();
+      g.fillStyle = k % 2 ? '#e8e8e8' : '#d8312f'; g.beginPath(); g.arc(x, y, tr * 0.5, 0, TAU); g.fill();
     }
   }
-  // street lamps at night
   if (theme.night) {
     for (let i = 0; i < n; i += 90) {
       const sgn = (i / 90) % 2 ? 1 : -1, o = TRACK_HALF + 30;
@@ -535,14 +547,15 @@ function buildWorld(track, theme, seed) {
       const gr = g.createRadialGradient(x, y, 2, x, y, 95);
       gr.addColorStop(0, 'rgba(255,230,160,0.45)'); gr.addColorStop(1, 'rgba(255,230,160,0)');
       g.fillStyle = gr; g.beginPath(); g.arc(x, y, 95, 0, TAU); g.fill();
-      g.fillStyle = '#fff2c4'; g.beginPath(); g.arc(x, y, 3.5, 0, TAU); g.fill();
+      g.fillStyle = '#fff2c4'; g.beginPath(); g.arc(x, y, low ? 2 * cs : 3.5, 0, TAU); g.fill();
     }
   }
-  return { cv, g, x: B.x, y: B.y };
+  return { cv, g, x: B.x, y: B.y, w: B.w, h: B.h, z, cs, low };
 }
 function thumbCanvas(track, theme, w, h, pad) {
-  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
-  const g = cv.getContext('2d'); const B = track.bounds, c = track.center;
+  const d = G.dpr || 1;
+  const cv = document.createElement('canvas'); cv.width = w * d; cv.height = h * d;
+  const g = cv.getContext('2d'); g.scale(d, d); const B = track.bounds, c = track.center;
   const bw = B.w - 600, bh = B.h - 600;
   const sc = Math.min((w - pad * 2) / bw, (h - pad * 2) / bh);
   g.translate(w / 2, h / 2); g.scale(sc, sc); g.translate(-(B.x + 300 + bw / 2), -(B.y + 300 + bh / 2));
@@ -576,6 +589,7 @@ function drawCar(g, car, race, time) {
   const grd = g.createLinearGradient(0, -Wd / 2, 0, Wd / 2);
   grd.addColorStop(0, shade(car.color, 1.25)); grd.addColorStop(0.5, car.color); grd.addColorStop(1, shade(car.color, 0.6));
   g.fillStyle = grd; roundRect(g, -L / 2, -Wd / 2, L, Wd, 7); g.fill();
+  if (cs > 1.5) { g.strokeStyle = 'rgba(0,0,0,0.75)'; g.lineWidth = 1.4; g.stroke(); }
   g.fillStyle = 'rgba(0,0,0,0.22)'; roundRect(g, -L / 2 + 4, -Wd / 2 + 2, 7, Wd - 4, 2); g.fill(); // air intakes
   if (car.player) { g.fillStyle = 'rgba(255,255,255,0.85)'; g.fillRect(-L / 2 + 2, -1.5, L - 4, 3); }
   // cabin
@@ -639,7 +653,7 @@ function laySkids(world, car, dt) {
   const pts = [[q.x - bx * 13 + nxv * 9, q.y - by * 13 + nyv * 9], [q.x - bx * 13 - nxv * 9, q.y - by * 13 - nyv * 9]];
   const strong = car.slip > 0.15 && car.derail === 0 && car.v > 80;
   if (strong && car.rl) {
-    const g = world.g; g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 3.5; g.lineCap = 'round';
+    const g = world.g; g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = world.low ? 2 * world.cs : 3.5; g.lineCap = 'round';
     g.beginPath(); g.moveTo(car.rl[0], car.rl[1]); g.lineTo(pts[0][0], pts[0][1]); g.moveTo(car.rr[0], car.rr[1]); g.lineTo(pts[1][0], pts[1][1]); g.stroke();
   }
   car.rl = pts[0]; car.rr = pts[1];
@@ -755,9 +769,9 @@ function startRace(trackIdx) {
   const def = TRACKS[trackIdx];
   const race = newRace(def, save.laps, save.players, save.ai);
   G.race = race; G.state = 'race'; G.msgs.length = 0; particles.length = 0; G.result = null; G.lastLights = -1;
-  G.world = buildWorld(race.track, race.theme, def.seed);
   G.mini = thumbCanvas(race.track, race.theme, 96, 96, 10);
   G.full = fitCamera(race.track, race.players.length > 1);
+  G.worlds = {}; G.world = null; ensureWorld();
   const p = race.player.lane.at(race.player.s);
   G.cam.x = p.x; G.cam.y = p.y; G.cam.ang = p.h; G.cam.zoom = 0.9;
   save.sel = trackIdx; persist();
@@ -799,6 +813,13 @@ function finishRace(race) {
   G.state = 'result';
 }
 
+function ensureWorld() {
+  const race = G.race; if (!race) return;
+  const full = save.cam === 'full' || twoP();
+  const key = full ? 'full' : 'chase';
+  if (!G.worlds[key]) G.worlds[key] = full ? buildWorld(race.track, race.theme, race.track.def.seed, G.full.z, G.dpr) : buildWorld(race.track, race.theme, race.track.def.seed, 1, 1);
+  G.world = G.worlds[key];
+}
 function fitCamera(track, two) {
   // whole circuit on screen: fit the track (without the decoration margin) into the free area between HUD and pedals
   const B = track.bounds, pad = 26;
@@ -852,6 +873,7 @@ function drawWorld(g) {
   let sx = 0, sy = 0;
   if (race.shake > 0) { sx = (Math.random() - 0.5) * 14 * race.shake; sy = (Math.random() - 0.5) * 14 * race.shake; }
   const full = save.cam === 'full' || twoP();
+  if (!G.world || G.world.low !== full) ensureWorld();
   let z;
   if (full) {
     const F = G.full;
@@ -864,9 +886,10 @@ function drawWorld(g) {
     g.translate(-G.cam.x, -G.cam.y);
     z = G.cam.zoom;
   }
-  G.carScale = clamp(0.42 / z, 1, 2.3);
+  G.carScale = clamp(0.62 / z, 1, 3.3);
   const lw = 9 * clamp(0.5 / z, 1, 3);
-  g.drawImage(G.world.cv, G.world.x, G.world.y);
+  g.imageSmoothingEnabled = true;
+  g.drawImage(G.world.cv, G.world.x, G.world.y, G.world.w, G.world.h);
   // racing-line assist
   if (G.state === 'race' && race.state === 'race') for (const h of race.players) {
     if (h.derail > 0) continue;
@@ -885,7 +908,7 @@ function drawWorld(g) {
   for (const h of race.players) drawCar(g, h, race, G.time);
   if (full) for (const h of race.players) {
     if (h.derail > 0) continue;
-    const q = carPose(h), r = 34 * G.carScale * 0.5, pulse = 1 + Math.sin(G.time * 6) * 0.08;
+    const q = carPose(h), r = 30 * G.carScale * 0.5, pulse = 1 + Math.sin(G.time * 6) * 0.08;
     g.save(); g.translate(q.x, q.y); g.rotate(-G.full.rot);
     g.strokeStyle = h.color; g.lineWidth = 2.5 / z; g.beginPath(); g.arc(0, 0, r * pulse, 0, TAU); g.stroke();
     g.fillStyle = h.color; g.beginPath(); g.moveTo(0, -r * pulse - 4 / z); g.lineTo(-8 / z, -r * pulse - 18 / z); g.lineTo(8 / z, -r * pulse - 18 / z); g.closePath(); g.fill();
@@ -1008,7 +1031,7 @@ function drawHUD(g) {
       g.textAlign = 'left'; g.fillStyle = c.player ? '#ffd600' : '#fff'; g.font = (c.player ? '900 ' : 'bold ') + '10px Arial'; g.fillText((i + 1) + ' ' + c.name.split(' ')[0], W - 88, y);
     });
   } else {
-    g.drawImage(G.mini.cv, W - 106, 10);
+    g.drawImage(G.mini.cv, W - 106, 10, G.mini.w, G.mini.h);
     for (const c of race.cars) {
       const q = carPose(c); const mx = W - 106 + 48 + (q.x - G.mini.ox) * G.mini.sc, my = 10 + 48 + (q.y - G.mini.oy) * G.mini.sc;
       g.fillStyle = c.color; g.beginPath(); g.arc(mx, my, c.player ? 4.5 : 3.5, 0, TAU); g.fill();
@@ -1090,7 +1113,7 @@ function drawMenu(g) {
     g.fillStyle = sel ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.07)'; roundRect(g, c.x, c.y, c.w, c.h, 14); g.fill();
     if (sel) { g.strokeStyle = '#ffd600'; g.lineWidth = 3; g.stroke(); }
     g.fillStyle = th.bg; roundRect(g, c.x + 8, c.y + 8, 96, c.h - 16, 10); g.fill();
-    const th2 = G.thumbs[c.i]; if (th2) g.drawImage(th2.cv, c.x + 8, c.y + 8);
+    const th2 = G.thumbs[c.i]; if (th2) g.drawImage(th2.cv, c.x + 8, c.y + 8, th2.w, th2.h);
     g.textAlign = 'left'; g.fillStyle = '#fff'; g.font = '900 17px Arial Black, Arial'; g.fillText(def.name, c.x + 116, c.y + 20);
     g.fillStyle = '#ffd600'; g.font = '14px Arial'; g.fillText('★'.repeat(def.stars) + '☆'.repeat(5 - def.stars), c.x + 116, c.y + 40);
     g.fillStyle = 'rgba(255,255,255,0.75)'; g.font = '11px Arial'; wrapText(g, def.desc, c.x + 116, c.y + 57, c.w - 130, 13);
@@ -1155,8 +1178,8 @@ function drawResult(g) {
   btn(R.again, '#2fa84f', 'RIGARA', '#073b16'); btn(R.menu, '#3a6cff', 'CIRCUITI'); btn(R.share, '#111', 'Condividi su 𝕏');
 }
 function draw() {
-  const g = ctx;
-  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, H);
+  const g = ctx, d = G.dpr || 1;
+  g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, W, H);
   if (G.state === 'menu') { drawMenu(g); return; }
   g.fillStyle = G.race.theme.bg; g.fillRect(0, 0, W, H);
   drawWorld(g);
@@ -1272,6 +1295,8 @@ function frame(ts) {
 }
 function boot() {
   canvas = document.getElementById('game'); ctx = canvas.getContext('2d');
+  G.dpr = Math.min(2.5, Math.max(1, root.devicePixelRatio || 1));
+  canvas.width = Math.round(W * G.dpr); canvas.height = Math.round(H * G.dpr);
   Snd.on = save.sound !== false;
   G.thumbs = TRACKS.map(def => thumbCanvas(buildTrack(def), THEMES[def.theme], 96, 68, 6));
   canvas.addEventListener('pointerdown', ev => { ev.preventDefault(); const p = canvasPos(ev); pressAt(p.x, p.y, ev.pointerId); });
