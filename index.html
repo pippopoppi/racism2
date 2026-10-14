@@ -23,8 +23,11 @@
 </style>
 </head>
 <body>
-<div id="wrap"><canvas id="game" width="400" height="720"></canvas></div>
+<div id="wrap"><canvas id="game" width="400" height="720"></canvas><div id="visits" style="position:absolute;top:0;right:2%;display:none;font:700 11px system-ui,sans-serif;color:#cfd8ff;background:rgba(19,22,42,.92);border-radius:0 0 8px 8px;padding:3px 8px;border-radius:999px;pointer-events:none" hidden></div></div>
 <script src="game.js"></script>
+<script>
+(function(){var n=document.getElementById('visits');if(!n||!window.fetch)return;fetch('https://pippopoppi.goatcounter.com/counter/'+location.pathname+'.json').then(function(r){return r.ok?r.json():null;}).then(function(d){var c=d&&String(d.count||'');if(!c||c==='0')return;n.textContent=c==='1'?'Giocato 1 volta':'Giocato '+c+' volte';n.hidden=false;n.dataset.ok='1';setInterval(function(){var g=window.Racism2&&Racism2.G;n.style.display=(g&&g.state==='menu')?'block':'none';},400);}).catch(function(){});})();
+</script>
 <!-- Visitor count (GoatCounter: no cookies, no personal data) -->
 <script data-goatcounter="https://pippopoppi.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </body>
